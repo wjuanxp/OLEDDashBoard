@@ -94,7 +94,7 @@ def load_assets():
     small = [small_raw[i * 5 : (i + 1) * 5] for i in range(95)]
 
     large_by_name = {}
-    for i in range(17):
+    for i in range(18):
         name = "sLarge%02d" % i
         data = parse_int_array(fonts, name)
         large_by_name[name] = data

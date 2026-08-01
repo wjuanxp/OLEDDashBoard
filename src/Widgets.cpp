@@ -34,6 +34,7 @@ static int8_t largeGlyphIndex(uint8_t c) {
         case 'C': return 14;
         case 0xB0: return 15;
         case '+': return 16;
+        case 'F': return 17;
         default: return -1;
     }
 }
@@ -199,10 +200,16 @@ void SensorValueWidget::draw(Adafruit_GFX& gfx) {
 
     // Value string (scaled by ten) with unit suffix.
     char text[12];
-    uint8_t n = formatX10(value_, text);
+    int16_t valueX10 = value_;
+    uint8_t n = formatX10(valueX10, text);
     if (unit_ == kUnitDegC) {
         text[n++] = (char)0xB0;
         text[n++] = 'C';
+    } else if (unit_ == kUnitDegF) {
+        valueX10 = celsiusToFahrenheitX10(value_);
+        n = formatX10(valueX10, text);
+        text[n++] = (char)0xB0;
+        text[n++] = 'F';
     } else if (unit_ == kUnitPercent) {
         text[n++] = '%';
     }
@@ -358,7 +365,8 @@ FooterWidget::FooterWidget()
       stats_(nullptr),
       minX10_(0),
       maxX10_(0),
-      avgX10_(0) {}
+      avgX10_(0),
+      unit_(kUnitDegC) {}
 
 void FooterWidget::update() {
     if (stats_ == nullptr) return;
@@ -400,6 +408,26 @@ void FooterWidget::draw(Adafruit_GFX& gfx) {
     }
     line[n] = '\0';
 
+    // Convert the whole line to Fahrenheit if requested.
+    if (unit_ == kUnitDegF) {
+        char fLine[40];
+        uint8_t m = 0;
+        const char* fLabel = "Min:";
+        while (*fLabel) fLine[m++] = *fLabel++;
+        m += formatX10(celsiusToFahrenheitX10(minX10_), fLine + m);
+        fLabel = "  Max:";
+        while (*fLabel) fLine[m++] = *fLabel++;
+        m += formatX10(celsiusToFahrenheitX10(maxX10_), fLine + m);
+        fLabel = "  Avg:";
+        while (*fLabel) fLine[m++] = *fLabel++;
+        const int32_t avgRounded =
+            (avgX10_ < 0) ? (avgX10_ - 5) / 10 : (avgX10_ + 5) / 10;
+        m += formatX10(celsiusToFahrenheitX10((int16_t)avgRounded), fLine + m);
+        fLine[m] = '\0';
+        n = m;
+        memcpy(line, fLine, n + 1);
+    }
+
     const int16_t tw = textWidthCompact(line);
     drawTextCompact(gfx, x_ + (w_ - tw) / 2, y_ + 1, line);
 }
@@ -409,6 +437,13 @@ const uint8_t* ditherMatrix() { return &kDither4x4[0][0]; }
 int16_t floatToX10(float v) {
     if (v >= 0.0f) return (int16_t)(v * 10.0f + 0.5f);
     return (int16_t)(v * 10.0f - 0.5f);
+}
+
+int16_t celsiusToFahrenheitX10(int16_t celsiusX10) {
+    // F = C * 9/5 + 32, all in x10 units. Round half away from zero.
+    const int32_t n = (int32_t)celsiusX10 * 9;
+    const int32_t scaled = (n >= 0) ? (n + 2) / 5 : (n - 2) / 5;
+    return (int16_t)(scaled + 320);
 }
 
 }  // namespace OledDashboard

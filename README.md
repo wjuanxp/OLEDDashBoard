@@ -28,6 +28,8 @@ auto-scaling, icons, theming and historical visualisation.
 - Smooth scrolling history (newest sample enters at the right edge).
 - Built-in statistics: min / max / average, stored as `int16_t` (×10) in a
   fixed ring buffer — **no floats stored, no dynamic allocation**.
+- Configurable temperature unit (°C or °F) with automatic conversion of the
+  current value **and** the footer statistics.
 - Custom bitmap fonts: 5x7 small, 8x16 large-bold numeric, 4x6 compact footer.
 - Custom WiFi (5 levels) and battery (fill + charging + low warning) icons.
 - Theme engine with five shipped themes (Professional, Minimal, Industrial,
@@ -65,6 +67,7 @@ void setup() {
     dashboard.begin();
     dashboard.setWiFi(4);
     dashboard.setBattery(92);
+    // dashboard.setTemperatureUnit(OledDashboard::kUnitDegF);  // optional °F
 }
 
 void loop() {
@@ -94,6 +97,7 @@ That is the whole API for the common case.
 | Method | Description |
 | --- | --- |
 | `setTemperature(float)` | Set temperature in °C (e.g. `23.6`). |
+| `setTemperatureUnit(ValueUnit)` | Display °C (`kUnitDegC`, default) or °F (`kUnitDegF`). The temperature value and footer statistics are converted automatically. |
 | `setHumidity(float)` | Set relative humidity in % (e.g. `45.2`). |
 | `setBattery(uint8_t)` | Battery level, 0..100 %. |
 | `setBatteryCharging(bool)` | Draw the charging bolt. |
@@ -115,6 +119,7 @@ Every widget is reachable for finer control:
 
 ```cpp
 dashboard.temperature().value(23.6);
+dashboard.temperature().setUnit(OledDashboard::kUnitDegF);  // show °F
 dashboard.humidity().value(45.2);
 dashboard.wifi().strength(4);
 dashboard.battery().percent(92);

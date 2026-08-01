@@ -311,6 +311,24 @@ def glyph_strings():
         "........",
         "........",
     ]
+    G['F'] = [
+        "########",
+        "########",
+        "##......",
+        "##......",
+        "##......",
+        "##......",
+        "#######.",
+        "#######.",
+        "##......",
+        "##......",
+        "##......",
+        "##......",
+        "##......",
+        "##......",
+        "##......",
+        "##......",
+    ]
     return G
 
 def emit_large(g):
@@ -323,7 +341,7 @@ def emit_large(g):
     order = [('d', '0'), ('d', '1'), ('d', '2'), ('d', '3'), ('d', '4'),
              ('d', '5'), ('d', '6'), ('d', '7'), ('d', '8'), ('d', '9'),
              ('c', '.'), ('c', '-'), ('c', '%'), ('c', ':'), ('c', 'C'),
-             ('c', 'DEG'), ('c', '+')]
+             ('c', 'DEG'), ('c', '+'), ('c', 'F')]
     lines.append("/// 8x16 large bold glyph. Rows of 8 bits (bit 7 = leftmost).")
     lines.append("/// data points to the PROGMEM row bytes.")
     lines.append("typedef struct {")
@@ -736,7 +754,7 @@ def main():
     parts.append(" * generated arrays by hand; regenerate with gen_fonts.py.")
     parts.append(" *")
     parts.append(" * Large-font glyph codes: 0x20 ' ', '0'-'9', '.' '-' '%' ':' ")
-    parts.append(" * '+' 'C' and 0xB0 for the degree symbol. The large font")
+    parts.append(" * '+' 'C' 'F' and 0xB0 for the degree symbol. The large font")
     parts.append(" * renderer falls back to the small font for unknown glyphs.")
     parts.append(" */")
     parts.append("#ifndef OLED_DASHBOARD_FONTS_H")

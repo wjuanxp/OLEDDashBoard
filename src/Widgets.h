@@ -138,6 +138,14 @@ uint8_t formatX10(int16_t valueX10, char* out);
 int16_t floatToX10(float v);
 
 /**
+ * @brief Convert a Celsius value (scaled by ten) to Fahrenheit (scaled by
+ * ten), rounded to the nearest 0.1.
+ * @param celsiusX10  e.g. 236 for 23.6 C.
+ * @return The equivalent value in Fahrenheit, e.g. 745 for 74.5 F.
+ */
+int16_t celsiusToFahrenheitX10(int16_t celsiusX10);
+
+/**
  * @brief Pointer to the 4x4 ordered Bayer dither matrix (row-major, 16 values
  * 0..15) used by the fade graph. Stored in PROGMEM.
  */
@@ -151,6 +159,7 @@ const uint8_t* ditherMatrix();
 enum ValueUnit : uint8_t {
     kUnitNone = 0,
     kUnitDegC,     ///< Draws the degree glyph + 'C'.
+    kUnitDegF,     ///< Draws the degree glyph + 'F'.
     kUnitPercent,  ///< Draws '%'.
 };
 
@@ -177,6 +186,15 @@ public:
         if (font_ != font) setDirty();
         font_ = font;
     }
+
+    /// Select the unit suffix (e.g. switch the temperature row to Fahrenheit).
+    void setUnit(ValueUnit unit) {
+        if (unit_ != unit) setDirty();
+        unit_ = unit;
+    }
+
+    /// Current unit suffix.
+    ValueUnit unit() const { return unit_; }
 
     void update() override;
     void draw(Adafruit_GFX& gfx) override;
@@ -272,6 +290,12 @@ public:
     /// Feed the statistics the footer should summarise.
     void setStatistics(const Statistics* stats) { stats_ = stats; }
 
+    /// Select the temperature unit used for the Min/Max/Avg values.
+    void setTemperatureUnit(ValueUnit unit) {
+        if (unit_ != unit) setDirty();
+        unit_ = unit;
+    }
+
     void update() override;
     void draw(Adafruit_GFX& gfx) override;
 
@@ -280,6 +304,7 @@ private:
     int16_t minX10_;
     int16_t maxX10_;
     int32_t avgX10_;
+    ValueUnit unit_ = kUnitDegC;
 };
 
 }  // namespace OledDashboard

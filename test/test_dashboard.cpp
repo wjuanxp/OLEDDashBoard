@@ -4,10 +4,30 @@
 #include <math.h>
 #include <stdio.h>
 
+using OledDashboard::celsiusToFahrenheitX10;
+
+static int failures = 0;
+#define CHECK(cond, msg)                                     \
+    do {                                                     \
+        if (!(cond)) {                                       \
+            printf("FAIL: %s\n", msg);                       \
+            ++failures;                                      \
+        }                                                    \
+    } while (0)
+
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
 OledDashboard::OLEDDashboard dashboard(display);
 
 int main() {
+    // Fahrenheit conversion: known points.
+    CHECK(celsiusToFahrenheitX10(0) == 320, "0 C -> 32.0 F");
+    CHECK(celsiusToFahrenheitX10(236) == 745, "23.6 C -> 74.5 F");
+    CHECK(celsiusToFahrenheitX10(-34) == 259, "-3.4 C -> 25.9 F");
+    CHECK(celsiusToFahrenheitX10(-400) == -400, "-40 C -> -40 F");
+    CHECK(celsiusToFahrenheitX10(100) == 500, "10 C -> 50 F");
+    // Rounding: 37.2 C == 98.96 F -> 99.0.
+    CHECK(celsiusToFahrenheitX10(372) == 990, "37.2 C -> 99.0 F");
+
     dashboard.begin();
     dashboard.setTemperature(23.6f);
     dashboard.setHumidity(45.2f);
@@ -70,5 +90,21 @@ int main() {
     printf("================ battery low warning ========\n");
     display.printFrame();
 
-    return 0;
+    // Fahrenheit temperature unit.
+    dashboard.setTemperatureUnit(OledDashboard::kUnitDegF);
+    dashboard.update();
+    printf("================ temperature in Fahrenheit ==========\n");
+    display.printFrame();
+
+    dashboard.setTemperatureUnit(OledDashboard::kUnitDegC);
+    dashboard.update();
+    printf("================ temperature back to Celsius =======\n");
+    display.printFrame();
+
+    if (failures == 0) {
+        printf("ALL DASHBOARD TESTS PASSED\n");
+        return 0;
+    }
+    printf("%d FAILURES\n", failures);
+    return 1;
 }

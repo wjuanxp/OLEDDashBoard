@@ -102,6 +102,13 @@ public:
     /// Select the graph rendering style (fade by default).
     void setGraphStyle(GraphStyle style) { graph().setStyle(style); }
 
+    /// Set the temperature display unit (°C or °F). The temperature value is
+    /// converted to the selected unit; the footer stats follow the same unit.
+    void setTemperatureUnit(ValueUnit unit) {
+        temp_.setUnit(unit);
+        footer_.setTemperatureUnit(unit);
+    }
+
     /// Set the number of samples retained in the history (<= 128).
     void setGraphHistorySize(uint16_t size) {
         graph().setHistorySize(size);
