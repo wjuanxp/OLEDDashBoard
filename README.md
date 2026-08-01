@@ -146,6 +146,23 @@ dashboard.setTheme(OledDashboard::ThemeId::kMinimal);  // line graph, no divider
 | `kDark` | Yes | Filled | Dense area fill. |
 | `kModern` | No | Dots | No panel borders. |
 
+### Theme renders
+
+Pixel-accurate renders of each built-in theme as drawn on the 128x64 panel
+(generated from the shipped fonts, icons and layout by `tools/render_themes.py`):
+
+| Professional | Minimal |
+| --- | --- |
+| ![Professional](docs/themes/professional.png) | ![Minimal](docs/themes/minimal.png) |
+
+| Industrial | Dark |
+| --- | --- |
+| ![Industrial](docs/themes/industrial.png) | ![Dark](docs/themes/dark.png) |
+
+| Modern |
+| --- |
+| ![Modern](docs/themes/modern.png) |
+
 Custom themes are plain `Theme` structs — see `DashboardTheme.h`.
 
 ## Widgets

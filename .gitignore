@@ -6,6 +6,10 @@
 *.a
 *.d
 
+# Python
+__pycache__/
+*.pyc
+
 # Editor
 .vscode/
 .idea/
