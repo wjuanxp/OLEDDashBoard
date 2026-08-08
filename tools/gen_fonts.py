@@ -229,11 +229,11 @@ def glyph_strings():
         "..####..",
         "........",
         "........",
-        "..##....",
-        "...##...",
-        "...##...",
-        "...##...",
         "....##..",
+        "...##...",
+        "...##...",
+        "...##...",
+        "..##....",
         "..####..",
         ".##..##.",
         ".##..##.",
@@ -353,7 +353,7 @@ def emit_large(g):
     for i, (kind, key) in enumerate(order):
         rows = g[key]
         name = "sLarge%02d" % i
-        lines.append("static const uint8_t %s[16] PROGMEM = {" % name)
+        lines.append("static const uint8_t %s[%d] PROGMEM = {" % (name, len(rows)))
         for r in rows:
             v = 0
             for ch in r:
@@ -375,6 +375,8 @@ def emit_large(g):
     lines.append("")
     lines.append("/// Total number of large glyphs.")
     lines.append("static constexpr uint8_t kLargeGlyphCount = %d;" % len(order))
+    lines.append("static constexpr int8_t kLargeGlyphH = %d;" % len(g['0']))
+    lines.append("static constexpr int8_t kLargeGlyphW = 8;")
     lines.append("")
     return "\n".join(lines)
 
@@ -743,7 +745,7 @@ def emit_compact(g):
 
 
 def main():
-    out = r"C:\Users\user\Documents\JuanPersonal\OLEDLib\OLEDDashboard\src\Fonts.h"
+    out = r"D:\CodingProject\OLEDDashBoardLib\src\Fonts.h"
     g = glyph_strings()
     parts = []
     parts.append("/*")

@@ -32,6 +32,27 @@ int16_t Graph::valueToY(int32_t value) const {
     return y_ + (int16_t)(t / range);
 }
 
+int16_t Graph::sampleX(uint16_t idx, uint16_t n) const {
+    if (n <= 1) return x_ + w_ / 2;
+    return x_ + (int16_t)((int32_t)idx * (w_ - 1) / (n - 1));
+}
+
+int16_t Graph::valueAtColumn(int16_t x) const {
+    const uint16_t n = stats_.count();
+    if (n == 0) return 0;
+    if (n == 1) return stats_.at(0);
+    if (w_ <= 1) return stats_.at(n - 1);
+    const int32_t f = (int32_t)(x - x_) * (n - 1) / (w_ - 1);
+    if (f <= 0) return stats_.at(0);
+    if (f >= n - 1) return stats_.at(n - 1);
+    const uint16_t i0 = (uint16_t)f;
+    const uint16_t i1 = i0 + 1;
+    const int32_t frac = (int32_t)(x - x_) * (n - 1) - f * (w_ - 1);
+    const int32_t v0 = stats_.at(i0);
+    const int32_t v1 = stats_.at(i1);
+    return (int16_t)(v0 + (v1 - v0) * frac / (w_ - 1));
+}
+
 void Graph::draw(Adafruit_GFX& gfx) {
     gfx.fillRect(x_, y_, w_, h_, 0);
 
@@ -46,10 +67,6 @@ void Graph::draw(Adafruit_GFX& gfx) {
     minScaled_ = (int16_t)((int32_t)mn - margin);
     maxScaled_ = (int16_t)((int32_t)mx + margin);
     if (maxScaled_ <= minScaled_) maxScaled_ = (int16_t)(minScaled_ + 2);
-
-    // Right aligned: the newest sample always sits at the right edge.
-    const uint16_t visible = (n < (uint16_t)w_) ? n : (uint16_t)w_;
-    const int16_t xStart = (int16_t)(x_ + w_ - visible);
 
     switch (style_) {
         case GraphStyle::kFade:
@@ -73,41 +90,29 @@ void Graph::draw(Adafruit_GFX& gfx) {
     // data, mirroring the reference "line graph + fading columns" look.
     if (style_ == GraphStyle::kFade || style_ == GraphStyle::kFilled) {
         int16_t prevY = 0;
-        for (int16_t cx = xStart; cx < x_ + w_; ++cx) {
-            const int16_t v = stats_.at((uint16_t)(cx - xStart));
-            const int16_t cy = valueToY(v);
-            if (cx > xStart) gfx.drawLine(cx - 1, prevY, cx, cy, 1);
+        for (int16_t cx = x_; cx < x_ + w_; ++cx) {
+            const int16_t cy = valueToY(valueAtColumn(cx));
+            if (cx > x_) gfx.drawLine(cx - 1, prevY, cx, cy, 1);
             prevY = cy;
         }
     }
 }
 
 void Graph::drawLine(Adafruit_GFX& gfx) {
-    const uint16_t n = stats_.count();
-    const uint16_t visible = (n < (uint16_t)w_) ? n : (uint16_t)w_;
-    const int16_t xStart = (int16_t)(x_ + w_ - visible);
-
     int16_t prevY = 0;
-    bool havePrev = false;
-    for (int16_t cx = xStart; cx < x_ + w_; ++cx) {
-        const int16_t v = stats_.at((uint16_t)(cx - xStart));
-        const int16_t cy = valueToY(v);
-        if (havePrev) gfx.drawLine(cx - 1, prevY, cx, cy, 1);
+    for (int16_t cx = x_; cx < x_ + w_; ++cx) {
+        const int16_t cy = valueToY(valueAtColumn(cx));
+        if (cx > x_) gfx.drawLine(cx - 1, prevY, cx, cy, 1);
         prevY = cy;
-        havePrev = true;
     }
 }
 
 void Graph::drawFade(Adafruit_GFX& gfx) {
-    const uint16_t n = stats_.count();
-    const uint16_t visible = (n < (uint16_t)w_) ? n : (uint16_t)w_;
-    const int16_t xStart = (int16_t)(x_ + w_ - visible);
     const uint8_t* dither = ditherMatrix();
     const int16_t bottom = y_ + h_ - 1;
 
-    for (int16_t cx = xStart; cx < x_ + w_; ++cx) {
-        const int16_t v = stats_.at((uint16_t)(cx - xStart));
-        const int16_t top = valueToY(v);
+    for (int16_t cx = x_; cx < x_ + w_; ++cx) {
+        const int16_t top = valueToY(valueAtColumn(cx));
         const int16_t colH = bottom - top;  // >= 0
         if (colH < 1) {
             gfx.drawPixel(cx, top, 1);
@@ -125,25 +130,22 @@ void Graph::drawFade(Adafruit_GFX& gfx) {
 
 void Graph::drawBars(Adafruit_GFX& gfx) {
     const uint16_t n = stats_.count();
-    const uint16_t visible = (n < (uint16_t)w_) ? n : (uint16_t)w_;
-    const int16_t xStart = (int16_t)(x_ + w_ - visible);
     const int16_t bottom = y_ + h_ - 1;
+    const uint16_t barW = (uint16_t)((w_ - 1) / n) + 1;
 
-    for (int16_t cx = xStart; cx < x_ + w_; ++cx) {
-        const int16_t v = stats_.at((uint16_t)(cx - xStart));
-        const int16_t top = valueToY(v);
-        gfx.drawFastVLine(cx, top, (uint16_t)(bottom - top + 1), 1);
+    for (uint16_t i = 0; i < n; ++i) {
+        const int16_t cx = sampleX(i, n);
+        const int16_t top = valueToY(stats_.at(i));
+        gfx.fillRect(cx, top, barW, (int16_t)(bottom - top + 1), 1);
     }
 }
 
 void Graph::drawDots(Adafruit_GFX& gfx) {
     const uint16_t n = stats_.count();
-    const uint16_t visible = (n < (uint16_t)w_) ? n : (uint16_t)w_;
-    const int16_t xStart = (int16_t)(x_ + w_ - visible);
 
-    for (int16_t cx = xStart; cx < x_ + w_; ++cx) {
-        const int16_t v = stats_.at((uint16_t)(cx - xStart));
-        const int16_t cy = valueToY(v);
+    for (uint16_t i = 0; i < n; ++i) {
+        const int16_t cx = sampleX(i, n);
+        const int16_t cy = valueToY(stats_.at(i));
         gfx.drawPixel(cx, cy, 1);
         gfx.drawPixel(cx + 1, cy, 1);
         gfx.drawPixel(cx, cy + 1, 1);

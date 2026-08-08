@@ -25,7 +25,7 @@ namespace OledDashboard {
 class Statistics {
 public:
     /// Hard upper bound of the ring buffer (compile-time, in Flash only).
-    static constexpr uint16_t kMaxCapacity = Layout::kDefaultHistory;  // 128
+    static constexpr uint16_t kMaxCapacity = Layout::kDefaultHistory;  // 16
 
     /**
      * @brief Construct a Statistics buffer.

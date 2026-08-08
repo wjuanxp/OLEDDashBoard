@@ -272,24 +272,24 @@ def format_x10(value):
 # Fixed layout (src/Layout.h)
 LEFT_PANEL_W = 104
 DIVIDER_X = 104
-TEMP_ROW_Y, TEMP_ROW_H = 0, 16
-DIVIDER1_Y = 16
-HUMIDITY_ROW_Y, HUMIDITY_ROW_H = 17, 16
-DIVIDER2_Y = 33
-GRAPH_Y, GRAPH_H = 34, 20
-FOOTER_Y = 56
+TEMP_ROW_Y, TEMP_ROW_H = 0, 18
+DIVIDER1_Y = 18
+HUMIDITY_ROW_Y, HUMIDITY_ROW_H = 19, 18
+DIVIDER2_Y = 37
+GRAPH_Y, GRAPH_H = 38, 16
+FOOTER_Y = 55
 
 
 def draw_sensor(canvas, y, label, value_x10, unit):
-    canvas.fillRect(0, y, LEFT_PANEL_W, 16, 0)
+    canvas.fillRect(0, y, LEFT_PANEL_W, 18, 0)
     text = format_x10(value_x10)
     if unit == "C":
         text += DEGREE + "C"
     elif unit == "%":
         text += "%"
-    draw_text_small(canvas, 2, y + 1, label)
+    draw_text_small(canvas, 2, y + 2, label)
     tw = text_width_large(text)
-    draw_text_large(canvas, LEFT_PANEL_W - 3 - tw, y, text)
+    draw_text_large(canvas, LEFT_PANEL_W - 3 - tw, y + 1, text)
 
 
 def draw_dividers(canvas):
@@ -299,7 +299,7 @@ def draw_dividers(canvas):
 
 
 def draw_wifi(canvas, level):
-    x, y, w, h = DIVIDER_X + 1, 1, 23, 15
+    x, y, w, h = DIVIDER_X + 1, 1, 23, TEMP_ROW_H - 1
     canvas.fillRect(x, y, w, h, 0)
     if level == 0:
         return
@@ -312,7 +312,7 @@ def draw_wifi(canvas, level):
 
 
 def draw_battery(canvas, percent, charging=False, low_warning=True):
-    x, y, w, h = DIVIDER_X + 1, HUMIDITY_ROW_Y, 23, 16
+    x, y, w, h = DIVIDER_X + 1, HUMIDITY_ROW_Y, 23, HUMIDITY_ROW_H
     canvas.fillRect(x, y, w, h, 0)
     icon_x = x + (w - 14) // 2
     icon_y = y + 1
@@ -350,7 +350,7 @@ def draw_battery(canvas, percent, charging=False, low_warning=True):
 
 
 def draw_footer(canvas, min_x10, max_x10, avg_x10):
-    canvas.fillRect(0, FOOTER_Y, SCREEN_W, 8, 0)
+    canvas.fillRect(0, FOOTER_Y, SCREEN_W, 9, 0)
     if avg_x10 < 0:
         avg = (avg_x10 - 5) // 10
     else:
@@ -358,7 +358,7 @@ def draw_footer(canvas, min_x10, max_x10, avg_x10):
     line = "Min:%s  Max:%s  Avg:%s" % (
         format_x10(min_x10), format_x10(max_x10), format_x10(avg))
     tw = text_width_compact(line)
-    draw_text_compact(canvas, (SCREEN_W - tw) // 2, FOOTER_Y + 1, line)
+    draw_text_compact(canvas, (SCREEN_W - tw) // 2, FOOTER_Y + 2, line)
 
 
 # ---------------------------------------------------------------------------
@@ -396,16 +396,30 @@ def draw_graph(canvas, samples, style):
     if max_scaled <= min_scaled:
         max_scaled = min_scaled + 2
 
-    visible = min(n, w)
-    x_start = x + w - visible
     bottom = y + h - 1
 
-    def sample(cx):
-        return samples[cx - x_start]
+    def value_at(cx):
+        # Linearly interpolate samples across the full graph width so a
+        # history shorter than the panel still spans it edge to edge.
+        if n <= 1:
+            return samples[0]
+        f = (cx - x) * (n - 1) / (w - 1)
+        if f <= 0:
+            return samples[0]
+        if f >= n - 1:
+            return samples[-1]
+        i0 = int(f)
+        frac = f - i0
+        return int(round(samples[i0] + (samples[i0 + 1] - samples[i0]) * frac))
+
+    def sample_x(i):
+        if n <= 1:
+            return x + w // 2
+        return x + i * (w - 1) // (n - 1)
 
     if style == "fade":
-        for cx in range(x_start, x + w):
-            top = value_to_y(sample(cx), min_scaled, max_scaled, y, h)
+        for cx in range(x, x + w):
+            top = value_to_y(value_at(cx), min_scaled, max_scaled, y, h)
             col_h = bottom - top
             if col_h < 1:
                 canvas.drawPixel(cx, top, 1)
@@ -417,12 +431,15 @@ def draw_graph(canvas, samples, style):
                 if thresh < intensity:
                     canvas.drawPixel(cx, yy, 1)
     elif style == "bars" or style == "filled":
-        for cx in range(x_start, x + w):
-            top = value_to_y(sample(cx), min_scaled, max_scaled, y, h)
-            canvas.vline(cx, top, bottom - top + 1, 1)
+        bar_w = (w - 1) // n + 1
+        for i in range(n):
+            cx = sample_x(i)
+            top = value_to_y(samples[i], min_scaled, max_scaled, y, h)
+            canvas.fillRect(cx, top, bar_w, bottom - top + 1, 1)
     elif style == "dots":
-        for cx in range(x_start, x + w):
-            cy = value_to_y(sample(cx), min_scaled, max_scaled, y, h)
+        for i in range(n):
+            cx = sample_x(i)
+            cy = value_to_y(samples[i], min_scaled, max_scaled, y, h)
             canvas.drawPixel(cx, cy, 1)
             canvas.drawPixel(cx + 1, cy, 1)
             canvas.drawPixel(cx, cy + 1, 1)
@@ -430,8 +447,8 @@ def draw_graph(canvas, samples, style):
     # Line graph, or the crisp polyline on top of fade / filled.
     if style in ("line", "fade", "filled"):
         prev = None
-        for cx in range(x_start, x + w):
-            cy = value_to_y(sample(cx), min_scaled, max_scaled, y, h)
+        for cx in range(x, x + w):
+            cy = value_to_y(value_at(cx), min_scaled, max_scaled, y, h)
             if prev is not None:
                 canvas.line(cx - 1, prev, cx, cy, 1)
             prev = cy
@@ -464,17 +481,18 @@ def render_dashboard(samples, style, show_dividers):
 
 
 def sample_history():
-    """128 samples ending exactly at 23.6 (matching the live Temp value)."""
+    """16 samples ending exactly at 23.6 (matching the live Temp value),
+    mirroring the default 16-sample history on 2 KB-SRAM boards."""
     out = []
-    for i in range(128):
-        p = i / 127.0
+    for i in range(16):
+        p = i / 15.0
         base = 21.0 + 2.6 * p
         wiggle = (
             0.6 * (1 - p) * math.sin(2 * math.pi * i / 21.0)
             + 0.3 * (1 - p) * math.sin(2 * math.pi * i / 5.0 + 1.2)
         )
         out.append(round((base + wiggle) * 10))
-    out[127] = 236
+    out[15] = 236
     return out
 
 

@@ -123,8 +123,10 @@ int16_t drawTextLarge(Adafruit_GFX& gfx, int16_t x, int16_t y,
             continue;
         }
         const FontLargeGlyph* glyph = &sLargeGlyphs[idx];
-        for (int8_t row = 0; row < 16; ++row) {
-            uint8_t bits = pgm_read_byte(glyph->data + row);
+        const uint8_t* data =
+            (const uint8_t*)pgm_read_ptr(&glyph->data);
+        for (int8_t row = 0; row < kLargeGlyphH; ++row) {
+            uint8_t bits = pgm_read_byte(data + row);
             for (int8_t col = 0; col < 8; ++col) {
                 const bool on = (bits >> (7 - col)) & 1;
                 if (on != inverted) {
@@ -150,8 +152,10 @@ int16_t drawTextCompact(Adafruit_GFX& gfx, int16_t x, int16_t y,
             continue;
         }
         const FontCompactGlyph* glyph = &sCompactGlyphs[idx];
+        const uint8_t* data =
+            (const uint8_t*)pgm_read_ptr(&glyph->data);
         for (int8_t col = 0; col < kCompactGlyphW; ++col) {
-            const uint8_t bits = pgm_read_byte(glyph->data + col);
+            const uint8_t bits = pgm_read_byte(data + col);
             for (int8_t row = 0; row < kCompactGlyphH; ++row) {
                 if ((bits >> row) & 1) {
                     gfx.drawPixel(x + col, y + row, 1);
@@ -216,13 +220,15 @@ void SensorValueWidget::draw(Adafruit_GFX& gfx) {
     text[n] = '\0';
 
     // Small label, top-left.
-    drawTextSmall(gfx, x_ + Layout::kPadding, y_ + 1, label_);
+    drawTextSmall(gfx, x_ + Layout::kPadding, y_ + 2, label_);
 
     // Value, right aligned, in the selected font.
     const bool small = (font_ == FontSize::kSmall);
     const int16_t tw = small ? textWidthSmall(text) : textWidthLarge(text);
     const int16_t vx = x_ + w_ - Layout::kValueRightInset - tw;
-    const int16_t vy = small ? y_ + 4 : y_;
+    // Vertical inset: the 8x16 glyph in an 18 px row keeps ~1 px of clearance
+    // above (row 0) and below (row 17) so digits never touch the divider.
+    const int16_t vy = small ? y_ + 6 : y_ + 1;
     if (small) {
         drawTextSmall(gfx, vx, vy, text);
     } else {
@@ -361,7 +367,7 @@ void BatteryWidget::draw(Adafruit_GFX& gfx) {
 // ---------------------------------------------------------------------------
 
 FooterWidget::FooterWidget()
-    : Widget(0, Layout::kFooterY, Layout::kScreenW, 8),
+    : Widget(0, Layout::kFooterY, Layout::kScreenW, 9),
       stats_(nullptr),
       minX10_(0),
       maxX10_(0),
@@ -384,17 +390,19 @@ void FooterWidget::update() {
 void FooterWidget::draw(Adafruit_GFX& gfx) {
     gfx.fillRect(x_, y_, w_, h_, 0);
 
-    // Build "Min:22.9  Max:24.1  Avg:23.4" into a single small-font line.
-    char line[40];
+    // Build "Min:22.9  Max:24.1  Avg:23.4" into a single small-font line,
+    // applying the selected unit in one pass (keeps the stack footprint low
+    // enough for ATmega328P-class boards).
+    char line[36];
     uint8_t n = 0;
 
     const char* label = "Min:";
     while (*label) line[n++] = *label++;
-    n += formatX10(minX10_, line + n);
+    n += formatX10(applyUnit(minX10_), line + n);
 
     label = "  Max:";
     while (*label) line[n++] = *label++;
-    n += formatX10(maxX10_, line + n);
+    n += formatX10(applyUnit(maxX10_), line + n);
 
     label = "  Avg:";
     while (*label) line[n++] = *label++;
@@ -404,32 +412,16 @@ void FooterWidget::draw(Adafruit_GFX& gfx) {
         // 20.0), which formatX10 prints as "20.0".
         const int32_t avgRounded =
             (avgX10_ < 0) ? (avgX10_ - 5) / 10 : (avgX10_ + 5) / 10;
-        n += formatX10((int16_t)avgRounded, line + n);
+        n += formatX10(applyUnit((int16_t)avgRounded), line + n);
     }
     line[n] = '\0';
 
-    // Convert the whole line to Fahrenheit if requested.
-    if (unit_ == kUnitDegF) {
-        char fLine[40];
-        uint8_t m = 0;
-        const char* fLabel = "Min:";
-        while (*fLabel) fLine[m++] = *fLabel++;
-        m += formatX10(celsiusToFahrenheitX10(minX10_), fLine + m);
-        fLabel = "  Max:";
-        while (*fLabel) fLine[m++] = *fLabel++;
-        m += formatX10(celsiusToFahrenheitX10(maxX10_), fLine + m);
-        fLabel = "  Avg:";
-        while (*fLabel) fLine[m++] = *fLabel++;
-        const int32_t avgRounded =
-            (avgX10_ < 0) ? (avgX10_ - 5) / 10 : (avgX10_ + 5) / 10;
-        m += formatX10(celsiusToFahrenheitX10((int16_t)avgRounded), fLine + m);
-        fLine[m] = '\0';
-        n = m;
-        memcpy(line, fLine, n + 1);
-    }
-
     const int16_t tw = textWidthCompact(line);
-    drawTextCompact(gfx, x_ + (w_ - tw) / 2, y_ + 1, line);
+    drawTextCompact(gfx, x_ + (w_ - tw) / 2, y_ + 2, line);
+}
+
+int16_t FooterWidget::applyUnit(int16_t valueX10) const {
+    return (unit_ == kUnitDegF) ? celsiusToFahrenheitX10(valueX10) : valueX10;
 }
 
 const uint8_t* ditherMatrix() { return &kDither4x4[0][0]; }

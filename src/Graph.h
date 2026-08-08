@@ -83,6 +83,14 @@ private:
     // Map a normalized value [0..1] onto a pixel row within the graph area.
     int16_t valueToY(int32_t value) const;
 
+    // X position (screen column) of sample idx when the n samples are
+    // stretched across the full graph width.
+    int16_t sampleX(uint16_t idx, uint16_t n) const;
+
+    // Linearly interpolated sample value at a given screen column, so a
+    // history shorter than the graph width still spans the whole panel.
+    int16_t valueAtColumn(int16_t x) const;
+
     void drawLine(Adafruit_GFX& gfx);
     void drawFade(Adafruit_GFX& gfx);
     void drawBars(Adafruit_GFX& gfx);

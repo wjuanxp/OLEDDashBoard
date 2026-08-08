@@ -300,6 +300,9 @@ public:
     void draw(Adafruit_GFX& gfx) override;
 
 private:
+    /// Convert a x10 value to the selected unit (identity for °C).
+    int16_t applyUnit(int16_t valueX10) const;
+
     const Statistics* stats_;
     int16_t minX10_;
     int16_t maxX10_;

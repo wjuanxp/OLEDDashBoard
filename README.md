@@ -11,7 +11,7 @@ auto-scaling, icons, theming and historical visualisation.
 | Humidity  45.2%        | Battery 92%           |
 +────────────────────────+                        |
 |                                                  |
-|         Historical Fade Graph (20 px)          |
+|         Historical Fade Graph (16 px)          |
 |                                                  |
 | Min:17.0  Max:23.0  Avg:20.0                    |
 +-------------------------------------------------+
@@ -111,7 +111,7 @@ That is the whole API for the common case.
 | `setTheme(ThemeId)` | Apply a built-in theme. |
 | `setTheme(const Theme&)` | Apply a custom theme. |
 | `setGraphStyle(GraphStyle)` | `kFade` (default), `kLine`, `kBars`, `kFilled`, `kDots`. |
-| `setGraphHistorySize(uint16_t)` | Retained history length, 1..128 (default 128). |
+| `setGraphHistorySize(uint16_t)` | Retained history length, 1..128 (default 16 on 2 KB-SRAM boards). |
 
 ### Fluent API
 
@@ -132,8 +132,10 @@ dashboard.graph().setStyle(OledDashboard::GraphStyle::kLine);
 
 History is stored as **`int16_t` values scaled by ten** (23.6 → 236). The
 `Statistics` class keeps min / max / sum incrementally, so the footer's
-`Min:.. Max:.. Avg:..` is always O(1). The default ring buffer holds 128
-samples (256 bytes RAM) — one per graph column at 128 px width.
+`Min:.. Max:.. Avg:..` is always O(1). The default ring buffer holds 16
+samples (32 bytes RAM) so the library plus the 1024-byte SSD1306 framebuffer
+fits the ATmega328P's 2 KB SRAM; on boards with more RAM (Mega, ESP32) raise
+`Layout::kDefaultHistory` to 128 for one sample per graph column.
 
 ## Themes
 
@@ -190,10 +192,14 @@ widgets, so no Unicode handling is needed in sketches.
 
 | Resource | Typical |
 | --- | --- |
-| History buffer (128 × `int16_t`) | 256 B |
+| History buffer (16 × `int16_t`) | 32 B |
 | Widgets + engine state | ≈ 150 B |
 | Adafruit SSD1306 framebuffer | 1024 B (external) |
 | Flash | a few KB over the Adafruit dependencies |
+
+On an ATmega328P (2 KB SRAM) the sketch's static RAM plus the 1024-byte
+framebuffer must stay under 2048 bytes; the shipped defaults (16-sample
+history, compact footer) are tuned for that budget.
 
 No `new`/`malloc`/`std::vector` anywhere. Rendering skips unchanged widgets and
 `display()` is called once per `update()`.
