@@ -49,31 +49,60 @@ void OLEDDashboard::applyTheme() {
 }
 
 void OLEDDashboard::update() {
-    Widget* const widgets[] = {
-        &temp_, &humidity_, &wifi_, &battery_, &divider_, &graph_, &footer_,
-    };
-    const uint8_t n = sizeof(widgets) / sizeof(widgets[0]);
+    // All widgets are concrete members, so dispatch is direct (no vtables).
+    temp_.update();
+    if (temp_.visible() && temp_.dirty()) {
+        temp_.draw(display_);
+        temp_.clearDirty();
+    }
 
-    for (uint8_t i = 0; i < n; ++i) {
-        Widget* w = widgets[i];
-        w->update();
-        if (w->visible() && w->dirty()) {
-            w->draw(display_);
-            w->clearDirty();
-        }
+    humidity_.update();
+    if (humidity_.visible() && humidity_.dirty()) {
+        humidity_.draw(display_);
+        humidity_.clearDirty();
+    }
+
+    wifi_.update();
+    if (wifi_.visible() && wifi_.dirty()) {
+        wifi_.draw(display_);
+        wifi_.clearDirty();
+    }
+
+    battery_.update();
+    if (battery_.visible() && battery_.dirty()) {
+        battery_.draw(display_);
+        battery_.clearDirty();
+    }
+
+    divider_.update();
+    if (divider_.visible() && divider_.dirty()) {
+        divider_.draw(display_);
+        divider_.clearDirty();
+    }
+
+    graph_.update();
+    if (graph_.visible() && graph_.dirty()) {
+        graph_.draw(display_);
+        graph_.clearDirty();
+    }
+
+    footer_.update();
+    if (footer_.visible() && footer_.dirty()) {
+        footer_.draw(display_);
+        footer_.clearDirty();
     }
 
     display_.display();
 }
 
 void OLEDDashboard::draw() {
-    Widget* const widgets[] = {
-        &temp_, &humidity_, &wifi_, &battery_, &divider_, &graph_, &footer_,
-    };
-    const uint8_t n = sizeof(widgets) / sizeof(widgets[0]);
-    for (uint8_t i = 0; i < n; ++i) {
-        widgets[i]->setDirty();
-    }
+    temp_.setDirty();
+    humidity_.setDirty();
+    wifi_.setDirty();
+    battery_.setDirty();
+    divider_.setDirty();
+    graph_.setDirty();
+    footer_.setDirty();
     display_.clearDisplay();  // wipe any stale pixels before a full redraw
     update();
 }

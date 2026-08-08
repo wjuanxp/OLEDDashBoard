@@ -72,12 +72,12 @@ public:
     const Statistics& statistics() const { return stats_; }
 
     // -- Widget interface ---------------------------------------------------
-    void update() override;  // nothing to do: history is pushed externally
-    void draw(Adafruit_GFX& gfx) override;
+    void update();  // nothing to do: history is pushed externally
+    void draw(Adafruit_GFX& gfx);
 
     /// Configure graph bounds. Overrides Widget::setBounds to keep the ring
     /// buffer aligned with the visible width.
-    void setBounds(int16_t x, int16_t y, int16_t w, int16_t h) override;
+    void setBounds(int16_t x, int16_t y, int16_t w, int16_t h);
 
 private:
     // Map a normalized value [0..1] onto a pixel row within the graph area.

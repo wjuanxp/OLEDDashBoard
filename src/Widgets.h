@@ -13,6 +13,10 @@
  *
  * @file Widgets.h also exposes the internal bitmap text renderer used by all
  * widgets (custom 5x7 small font and 8x16 large bold font from Fonts.h).
+ *
+ * @note Widget is intentionally non-polymorphic: the dashboard owns every
+ * widget as a concrete member and dispatches calls directly, so no vtables
+ * (and no vtable pointer per widget) eat into the ATmega328P's 2 KB SRAM.
  */
 
 #ifndef OLED_DASHBOARD_WIDGETS_H
@@ -30,6 +34,10 @@ namespace OledDashboard {
 
 /**
  * @brief Base class for all dashboard widgets.
+ *
+ * Widgets share bounding-box state and dirty tracking. Subclasses implement
+ * update() and draw(); because the dashboard calls them directly on concrete
+ * widget members, these are intentionally not virtual (see the file comment).
  */
 class Widget {
 public:
@@ -40,16 +48,21 @@ public:
     Widget(int16_t x, int16_t y, int16_t w, int16_t h)
         : x_(x), y_(y), w_(w), h_(h), visible_(true), dirty_(true) {}
 
-    virtual ~Widget() {}
+    /// Default virtual destructor (derived widgets own no heap).
+    ~Widget() {}
 
     /// Recompute any derived state (called before draw when dirty).
-    virtual void update() = 0;
+    /// Base is a no-op; concrete widgets override this.
+    void update() {}
 
     /// Render the widget into the given canvas.
-    virtual void draw(Adafruit_GFX& gfx) = 0;
+    /// Base is a no-op; concrete widgets override this.
+    void draw(Adafruit_GFX& gfx) {
+        (void)gfx;
+    }
 
     /// Reposition / resize the widget.
-    virtual void setBounds(int16_t x, int16_t y, int16_t w, int16_t h) {
+    void setBounds(int16_t x, int16_t y, int16_t w, int16_t h) {
         x_ = x;
         y_ = y;
         w_ = w;
@@ -196,8 +209,8 @@ public:
     /// Current unit suffix.
     ValueUnit unit() const { return unit_; }
 
-    void update() override;
-    void draw(Adafruit_GFX& gfx) override;
+    void update();
+    void draw(Adafruit_GFX& gfx);
 
 private:
     int16_t value_;
@@ -215,8 +228,8 @@ class DividerWidget : public Widget {
 public:
     DividerWidget();
 
-    void update() override;
-    void draw(Adafruit_GFX& gfx) override;
+    void update();
+    void draw(Adafruit_GFX& gfx);
 };
 
 /**
@@ -237,8 +250,8 @@ public:
     /// Fluent alias.
     void strength(uint8_t level) { setStrength(level); }
 
-    void update() override;
-    void draw(Adafruit_GFX& gfx) override;
+    void update();
+    void draw(Adafruit_GFX& gfx);
 
 private:
     uint8_t level_;
@@ -271,8 +284,8 @@ public:
     /// Fluent alias.
     void charging(bool c) { setCharging(c); }
 
-    void update() override;
-    void draw(Adafruit_GFX& gfx) override;
+    void update();
+    void draw(Adafruit_GFX& gfx);
 
 private:
     uint8_t percent_;
@@ -296,8 +309,8 @@ public:
         unit_ = unit;
     }
 
-    void update() override;
-    void draw(Adafruit_GFX& gfx) override;
+    void update();
+    void draw(Adafruit_GFX& gfx);
 
 private:
     /// Convert a x10 value to the selected unit (identity for °C).
